@@ -84,6 +84,9 @@ NS_ASSUME_NONNULL_BEGIN
                                                       selfUID:(nullable NSString *)selfUID
                                                  onlyChildren:(BOOL)onlyChildren;
 
+- (XCUIElement *)fb_parentElement:(XCUIElement *)element
+                             root:(XCUIElement *) root;
+
 /**
  Waits until element snapshot is stable to avoid "Error copying attributes -25202 error".
  This error usually happens for testmanagerd if there is an active UI animation in progress and

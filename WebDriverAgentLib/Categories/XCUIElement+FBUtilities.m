@@ -179,6 +179,25 @@
   return result;
 }
 
+
+- (XCUIElement *)fb_parentElement:(XCUIElement *)element
+                          root:(XCUIElement *)root
+{
+  XCElementSnapshot *snapshot = [element fb_takeSnapshot];
+  XCElementSnapshot *parent = [snapshot parent];
+  NSString *parentId = [parent wdUID];
+  NSArray<NSString *> *ids = [NSArray arrayWithObjects:parentId,nil];
+  XCUIElementType type = [parent elementType];
+  XCUIElementQuery *query = [root.fb_query descendantsMatchingType:type];
+  query = [query matchingPredicate:[NSPredicate predicateWithFormat:@"%K IN %@", FBStringify(XCUIElement, wdUID), ids]];
+ 
+  XCUIElement *result = query.fb_firstMatch;
+  result.fb_isResolvedNatively = @NO;
+  return result;
+}
+
+
+
 - (void)fb_waitUntilStable
 {
   [self fb_waitUntilStableWithTimeout:FBConfiguration.waitForIdleTimeout];

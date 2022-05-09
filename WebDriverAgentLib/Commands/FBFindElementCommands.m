@@ -97,9 +97,16 @@ static id<FBResponsePayload> FBNoSuchElementErrorResponseForRequest(FBRouteReque
 {
   FBElementCache *elementCache = request.session.elementCache;
   XCUIElement *element = [elementCache elementForUUID:(NSString *)request.parameters[@"uuid"]];
-  XCUIElement *foundElement = [self.class elementUsing:request.arguments[@"using"]
-                                             withValue:request.arguments[@"value"]
-                                                 under:element];
+  XCUIElement *foundElement;
+  if([request.arguments[@"using"] isEqualToString:@"xpath"] && [request.arguments[@"value"] isEqualToString:@"./.."]) {
+    
+     foundElement = [element fb_parentElement:element root:[request.session activeApplication]];
+  } else {
+     foundElement = [self.class elementUsing:request.arguments[@"using"]
+                                               withValue:request.arguments[@"value"]
+                                                   under:element];
+    
+  }
   if (!foundElement) {
     return FBNoSuchElementErrorResponseForRequest(request);
   }
