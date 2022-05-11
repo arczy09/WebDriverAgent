@@ -6,10 +6,6 @@ set -e
 rm -rf ./out
 mkdir ./out
 
-bundle_identifier=$(xmllint --xpath 'substring(//key[text()="Entitlements"]/following::dict[1]/key[text()="application-identifier"]/following::string[1]/text(), 12)' ./signing/adhoc.mobileprovision.xml)
-uuid=$(xmllint --xpath '//key[text()="UUID"]/following::string[1]/text()' ./signing/adhoc.mobileprovision.xml)
-echo "Using application identifier ${bundle_identifier}, provisioning profile ${uuid}"
-
 xcodebuild \
     -project WebDriverAgent.xcodeproj \
     -scheme WebDriverAgentRunner \
