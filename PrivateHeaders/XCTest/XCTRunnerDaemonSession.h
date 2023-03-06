@@ -10,6 +10,9 @@
 #import <UIKit/UIKit.h>
 
 @class NSMutableDictionary, NSXPCConnection, XCSynthesizedEventRecord;
+#if !TARGET_OS_TV // tvOS does not provide relevant APIs
+@class CLLocation;
+#endif
 @protocol XCTUIApplicationMonitor, XCTAXClient, XCTestManager_ManagerInterface;
 
 // iOS since 10.3
@@ -50,7 +53,7 @@
 - (void)fetchParameterizedAttributeForElement:(id)arg1 attribute:(id)arg2 parameter:(id)arg3 reply:(CDUnknownBlockType)arg4;
 - (void)setAttribute:(id)arg1 value:(id)arg2 element:(id)arg3 reply:(CDUnknownBlockType)arg4;
 - (void)fetchAttributesForElement:(id)arg1 attributes:(id)arg2 reply:(CDUnknownBlockType)arg3;
-- (void)snapshotForElement:(id)arg1 attributes:(id)arg2 parameters:(id)arg3 reply:(void (^)(XCElementSnapshot *, NSError *))arg4;
+- (void)snapshotForElement:(id)arg1 attributes:(id)arg2 parameters:(id)arg3 reply:(void (^)(id/*XCElementSnapshot*/, NSError *))arg4;
 - (void)terminateApplicationWithBundleID:(id)arg1 completion:(CDUnknownBlockType)arg2;
 - (void)performAccessibilityAction:(int)arg1 onElement:(id)arg2 value:(id)arg3 reply:(CDUnknownBlockType)arg4;
 - (void)unregisterForAccessibilityNotification:(int)arg1 registrationToken:(id)arg2 reply:(CDUnknownBlockType)arg3;
@@ -66,5 +69,15 @@
 - (id)registerInvalidationHandler:(CDUnknownBlockType)arg1;
 - (void)_reportInvalidation;
 - (id)initWithConnection:(id)arg1;
+
+// Since Xcode 14.3
+- (void)openURL:(NSURL *)arg1 usingApplication:(NSString *)arg2 completion:(void (^)(_Bool, NSError *))arg3;
+- (void)openDefaultApplicationForURL:(NSURL *)arg1 completion:(void (^)(_Bool, NSError *))arg2;
+#if !TARGET_OS_TV // tvOS does not provide relevant APIs
+- (void)setSimulatedLocation:(CLLocation *)arg1 completion:(void (^)(_Bool, NSError *))arg2;
+- (void)getSimulatedLocationWithReply:(void (^)(CLLocation *, NSError *))arg1;
+- (void)clearSimulatedLocationWithReply:(void (^)(_Bool, NSError *))arg1;
+@property(readonly) _Bool supportsLocationSimulation;
+#endif
 
 @end

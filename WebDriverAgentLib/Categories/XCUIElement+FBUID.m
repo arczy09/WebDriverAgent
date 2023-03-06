@@ -7,6 +7,8 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
+#import <objc/runtime.h>
+
 #import "XCUIElement+FBUID.h"
 
 #import "FBElementUtils.h"
@@ -15,20 +17,51 @@
 
 @implementation XCUIElement (FBUID)
 
+- (unsigned long long)fb_accessibiltyId
+{
+  return [FBElementUtils idWithAccessibilityElement:([self isKindOfClass:XCUIApplication.class]
+                                                     ? [(XCUIApplication *)self accessibilityElement]
+                                                     : [self fb_takeSnapshot].accessibilityElement)];
+}
+
 - (NSString *)fb_uid
 {
   return [self isKindOfClass:XCUIApplication.class]
     ? [FBElementUtils uidWithAccessibilityElement:[(XCUIApplication *)self accessibilityElement]]
-    : [self fb_takeSnapshot].fb_uid;
+    : [FBXCElementSnapshotWrapper ensureWrapped:[self fb_takeSnapshot]].fb_uid;
 }
 
 @end
 
-@implementation XCElementSnapshot (FBUID)
+@implementation FBXCElementSnapshotWrapper (FBUID)
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-load-method"
++ (void)load
+{
+  Class XCElementSnapshotCls = objc_lookUpClass("XCElementSnapshot");
+  NSAssert(XCElementSnapshotCls != nil, @"Could not locate XCElementSnapshot class");
+  Method uidMethod = class_getInstanceMethod(self.class, @selector(fb_uid));
+  class_addMethod(XCElementSnapshotCls, @selector(fb_uid), method_getImplementation(uidMethod), method_getTypeEncoding(uidMethod));
+}
+#pragma diagnostic pop
+
+- (unsigned long long)fb_accessibiltyId
+{
+  return [FBElementUtils idWithAccessibilityElement:self.accessibilityElement];
+}
+
++ (nullable NSString *)wdUIDWithSnapshot:(id<FBXCElementSnapshot>)snapshot
+{
+  return [FBElementUtils uidWithAccessibilityElement:[snapshot accessibilityElement]];
+}
 
 - (NSString *)fb_uid
 {
-  return [FBElementUtils uidWithAccessibilityElement:self.accessibilityElement];
+  if ([self isKindOfClass:FBXCElementSnapshotWrapper.class]) {
+    return [self.class wdUIDWithSnapshot:self.snapshot];
+  }
+  return [FBElementUtils uidWithAccessibilityElement:[self accessibilityElement]];
 }
 
 @end

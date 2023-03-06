@@ -214,6 +214,7 @@
   [self verifyGesture:gesture orientation:UIDeviceOrientationLandscapeLeft];
 }
 
+// TODO: UIDeviceOrientationLandscapeRight is not so good in iOS 16? (Especially simulators)
 - (void)testPress
 {
   if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"15.0")) {
@@ -284,35 +285,6 @@
   [self verifyGesture:gesture orientation:orientation];
 }
 
-- (void)testForcePress
-{
-  if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"15.0")) {
-    // Does not work on iOS 15.
-    return;
-  }
-  NSArray<NSDictionary<NSString *, id> *> *gesture =
-  @[@{
-      @"action": @"press",
-      @"options": @{
-          @"ELEMENT": self.testedApplication.buttons[FBShowAlertForceTouchButtonName],
-          @"x": @1,
-          @"y": @1,
-          @"pressure": @1
-          }
-      },
-    @{
-      @"action": @"wait",
-      @"options": @{
-          @"ms": @300
-          }
-      },
-    @{
-      @"action": @"release"
-      }
-    ];
-  [self verifyGesture:gesture orientation:UIDeviceOrientationPortrait];
-}
-
 @end
 
 
@@ -326,7 +298,7 @@
     [self launchApplication];
     [self goToAttributesPage];
   });
-  self.pickerWheel = self.testedApplication.pickerWheels.fb_firstMatch;
+  self.pickerWheel = self.testedApplication.pickerWheels.allElementsBoundByIndex.firstObject;
 }
 
 - (void)tearDown

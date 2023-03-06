@@ -9,7 +9,6 @@
 
 #import "XCUIApplication+FBHelpers.h"
 
-#import "XCElementSnapshot.h"
 #import "FBElementTypeTransformer.h"
 #import "FBKeyboard.h"
 #import "FBLogger.h"
@@ -18,11 +17,11 @@
 #import "FBActiveAppDetectionPoint.h"
 #import "FBXCodeCompatibility.h"
 #import "FBXPath.h"
+#import "FBXCAccessibilityElement.h"
 #import "FBXCTestDaemonsProxy.h"
+#import "FBXCElementSnapshotWrapper+Helpers.h"
 #import "FBXCAXClientProxy.h"
 #import "FBXMLGenerationOptions.h"
-#import "XCAccessibilityElement.h"
-#import "XCElementSnapshot+FBHelpers.h"
 #import "XCUIDevice+FBHelpers.h"
 #import "XCUIElement+FBCaching.h"
 #import "XCUIElement+FBIsVisible.h"
@@ -32,7 +31,6 @@
 #import "XCTestPrivateSymbols.h"
 #import "XCTRunnerDaemonSession.h"
 
-const static NSTimeInterval FBMinimumAppSwitchWait = 3.0;
 static NSString* const FBUnknownBundleId = @"unknown";
 
 
@@ -41,11 +39,11 @@ static NSString* const FBUnknownBundleId = @"unknown";
 - (BOOL)fb_waitForAppElement:(NSTimeInterval)timeout
 {
   __block BOOL canDetectAxElement = YES;
-  int currentProcessIdentifier = self.accessibilityElement.processIdentifier;
+  int currentProcessIdentifier = [self.accessibilityElement processIdentifier];
   BOOL result = [[[FBRunLoopSpinner new]
            timeout:timeout]
           spinUntilTrue:^BOOL{
-    XCAccessibilityElement *currentAppElement = FBActiveAppDetectionPoint.sharedInstance.axElement;
+    id<FBXCAccessibilityElement> currentAppElement = FBActiveAppDetectionPoint.sharedInstance.axElement;
     canDetectAxElement = nil != currentAppElement;
     if (!canDetectAxElement) {
       return YES;
@@ -57,11 +55,11 @@ static NSString* const FBUnknownBundleId = @"unknown";
     : [self waitForExistenceWithTimeout:timeout];
 }
 
-+ (NSArray<NSDictionary<NSString *, id> *> *)fb_appsInfoWithAxElements:(NSArray<XCAccessibilityElement *> *)axElements
++ (NSArray<NSDictionary<NSString *, id> *> *)fb_appsInfoWithAxElements:(NSArray<id<FBXCAccessibilityElement>> *)axElements
 {
   NSMutableArray<NSDictionary<NSString *, id> *> *result = [NSMutableArray array];
   id<XCTestManager_ManagerInterface> proxy = [FBXCTestDaemonsProxy testRunnerProxy];
-  for (XCAccessibilityElement *axElement in axElements) {
+  for (id<FBXCAccessibilityElement> axElement in axElements) {
     NSMutableDictionary<NSString *, id> *appInfo = [NSMutableDictionary dictionary];
     pid_t pid = axElement.processIdentifier;
     appInfo[@"pid"] = @(pid);
@@ -93,14 +91,14 @@ static NSString* const FBUnknownBundleId = @"unknown";
   if(![[XCUIDevice sharedDevice] fb_goToHomescreenWithError:error]) {
     return NO;
   }
-  [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:MAX(duration, FBMinimumAppSwitchWait)]];
+  [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:MAX(duration, .0)]];
   [self fb_activate];
   return YES;
 }
 
 - (NSDictionary *)fb_tree
 {
-  XCElementSnapshot *snapshot = self.fb_isResolvedFromCache.boolValue
+  id<FBXCElementSnapshot> snapshot = self.fb_isResolvedFromCache.boolValue
     ? self.lastSnapshot
     : [self fb_snapshotWithAllAttributesAndMaxDepth:nil];
   return [self.class dictionaryForElement:snapshot recursive:YES];
@@ -108,27 +106,28 @@ static NSString* const FBUnknownBundleId = @"unknown";
 
 - (NSDictionary *)fb_accessibilityTree
 {
-  XCElementSnapshot *snapshot = self.fb_isResolvedFromCache.boolValue
+  id<FBXCElementSnapshot> snapshot = self.fb_isResolvedFromCache.boolValue
     ? self.lastSnapshot
     : [self fb_snapshotWithAllAttributesAndMaxDepth:nil];
   return [self.class accessibilityInfoForElement:snapshot];
 }
 
-+ (NSDictionary *)dictionaryForElement:(XCElementSnapshot *)snapshot recursive:(BOOL)recursive
++ (NSDictionary *)dictionaryForElement:(id<FBXCElementSnapshot>)snapshot recursive:(BOOL)recursive
 {
   NSMutableDictionary *info = [[NSMutableDictionary alloc] init];
   info[@"type"] = [FBElementTypeTransformer shortStringWithElementType:snapshot.elementType];
   info[@"rawIdentifier"] = FBValueOrNull([snapshot.identifier isEqual:@""] ? nil : snapshot.identifier);
-  info[@"name"] = FBValueOrNull(snapshot.wdName);
-  info[@"value"] = FBValueOrNull(snapshot.wdValue);
-  info[@"label"] = FBValueOrNull(snapshot.wdLabel);
-  info[@"rect"] = snapshot.wdRect;
-  info[@"frame"] = NSStringFromCGRect(snapshot.wdFrame);
-  info[@"isEnabled"] = [@([snapshot isWDEnabled]) stringValue];
-  info[@"isVisible"] = [@([snapshot isWDVisible]) stringValue];
-  info[@"isAccessible"] = [@([snapshot isWDAccessible]) stringValue];
+  FBXCElementSnapshotWrapper *wrappedSnapshot = [FBXCElementSnapshotWrapper ensureWrapped:snapshot];
+  info[@"name"] = FBValueOrNull(wrappedSnapshot.wdName);
+  info[@"value"] = FBValueOrNull(wrappedSnapshot.wdValue);
+  info[@"label"] = FBValueOrNull(wrappedSnapshot.wdLabel);
+  info[@"rect"] = wrappedSnapshot.wdRect;
+  info[@"frame"] = NSStringFromCGRect(wrappedSnapshot.wdFrame);
+  info[@"isEnabled"] = [@([wrappedSnapshot isWDEnabled]) stringValue];
+  info[@"isVisible"] = [@([wrappedSnapshot isWDVisible]) stringValue];
+  info[@"isAccessible"] = [@([wrappedSnapshot isWDAccessible]) stringValue];
 #if TARGET_OS_TV
-  info[@"isFocused"] = [@([snapshot isWDFocused]) stringValue];
+  info[@"isFocused"] = [@([wrappedSnapshot isWDFocused]) stringValue];
 #endif
 
   if (!recursive) {
@@ -138,28 +137,29 @@ static NSString* const FBUnknownBundleId = @"unknown";
   NSArray *childElements = snapshot.children;
   if ([childElements count]) {
     info[@"children"] = [[NSMutableArray alloc] init];
-    for (XCElementSnapshot *childSnapshot in childElements) {
+    for (id<FBXCElementSnapshot> childSnapshot in childElements) {
       [info[@"children"] addObject:[self dictionaryForElement:childSnapshot recursive:YES]];
     }
   }
   return info;
 }
 
-+ (NSDictionary *)accessibilityInfoForElement:(XCElementSnapshot *)snapshot
++ (NSDictionary *)accessibilityInfoForElement:(id<FBXCElementSnapshot>)snapshot
 {
-  BOOL isAccessible = [snapshot isWDAccessible];
-  BOOL isVisible = [snapshot isWDVisible];
+  FBXCElementSnapshotWrapper *wrappedSnapshot = [FBXCElementSnapshotWrapper ensureWrapped:snapshot];
+  BOOL isAccessible = [wrappedSnapshot isWDAccessible];
+  BOOL isVisible = [wrappedSnapshot isWDVisible];
 
   NSMutableDictionary *info = [[NSMutableDictionary alloc] init];
 
   if (isAccessible) {
     if (isVisible) {
-      info[@"value"] = FBValueOrNull(snapshot.wdValue);
-      info[@"label"] = FBValueOrNull(snapshot.wdLabel);
+      info[@"value"] = FBValueOrNull(wrappedSnapshot.wdValue);
+      info[@"label"] = FBValueOrNull(wrappedSnapshot.wdLabel);
     }
   } else {
     NSMutableArray *children = [[NSMutableArray alloc] init];
-    for (XCElementSnapshot *childSnapshot in snapshot.children) {
+    for (id<FBXCElementSnapshot> childSnapshot in snapshot.children) {
       NSDictionary *childInfo = [self accessibilityInfoForElement:childSnapshot];
       if ([childInfo count]) {
         [children addObject: childInfo];
@@ -172,7 +172,7 @@ static NSString* const FBUnknownBundleId = @"unknown";
   if ([info count]) {
     info[@"type"] = [FBElementTypeTransformer shortStringWithElementType:snapshot.elementType];
     info[@"rawIdentifier"] = FBValueOrNull([snapshot.identifier isEqual:@""] ? nil : snapshot.identifier);
-    info[@"name"] = FBValueOrNull(snapshot.wdName);
+    info[@"name"] = FBValueOrNull(wrappedSnapshot.wdName);
   } else {
     return nil;
   }
@@ -192,7 +192,7 @@ static NSString* const FBUnknownBundleId = @"unknown";
 - (NSString *)fb_descriptionRepresentation
 {
   NSMutableArray<NSString *> *childrenDescriptions = [NSMutableArray array];
-  for (XCUIElement *child in [self.fb_query childrenMatchingType:XCUIElementTypeAny].allElementsBoundByAccessibilityElement) {
+  for (XCUIElement *child in [self.fb_query childrenMatchingType:XCUIElementTypeAny].allElementsBoundByIndex) {
     [childrenDescriptions addObject:child.debugDescription];
   }
   // debugDescription property of XCUIApplication instance shows descendants addresses in memory
@@ -243,7 +243,7 @@ static NSString* const FBUnknownBundleId = @"unknown";
   };
 
   if (nil != keyNames && keyNames.count > 0) {
-    NSPredicate *searchPredicate = [NSPredicate predicateWithBlock:^BOOL(XCElementSnapshot *snapshot, NSDictionary *bindings) {
+    NSPredicate *searchPredicate = [NSPredicate predicateWithBlock:^BOOL(id<FBXCElementSnapshot> snapshot, NSDictionary *bindings) {
       if (snapshot.elementType != XCUIElementTypeKey && snapshot.elementType != XCUIElementTypeButton) {
         return NO;
       }

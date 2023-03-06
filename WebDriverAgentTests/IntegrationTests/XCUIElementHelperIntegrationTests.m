@@ -15,6 +15,7 @@
 #import "FBTestMacros.h"
 #import "FBElement.h"
 #import "FBElementUtils.h"
+#import "FBXCElementSnapshot.h"
 #import "XCUIElement+FBUtilities.h"
 
 @interface XCUIElementHelperIntegrationTests : FBIntegrationTestCase
@@ -31,16 +32,16 @@
 
 - (void)testDescendantsFiltering
 {
-  NSArray<XCUIElement *> *buttons = self.testedApplication.buttons.allElementsBoundByAccessibilityElement;
+  NSArray<XCUIElement *> *buttons = self.testedApplication.buttons.allElementsBoundByIndex;
   XCTAssertTrue(buttons.count > 0);
-  NSArray<XCUIElement *> *windows = self.testedApplication.windows.allElementsBoundByAccessibilityElement;
+  NSArray<XCUIElement *> *windows = self.testedApplication.windows.allElementsBoundByIndex;
   XCTAssertTrue(windows.count > 0);
   
   NSMutableArray<XCUIElement *> *allElements = [NSMutableArray array];
   [allElements addObjectsFromArray:buttons];
   [allElements addObjectsFromArray:windows];
   
-  NSMutableArray<XCElementSnapshot *> *buttonSnapshots = [NSMutableArray array];
+  NSMutableArray<id<FBXCElementSnapshot>> *buttonSnapshots = [NSMutableArray array];
   [buttonSnapshots addObject:[buttons.firstObject fb_takeSnapshot]];
   
   NSArray<XCUIElement *> *result = [self.testedApplication fb_filterDescendantsWithSnapshots:buttonSnapshots selfUID:nil onlyChildren:NO];

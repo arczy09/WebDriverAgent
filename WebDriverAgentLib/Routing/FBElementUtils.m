@@ -9,6 +9,7 @@
 
 #import <objc/runtime.h>
 
+#import "FBXCAccessibilityElement.h"
 #import "FBElementUtils.h"
 #import "FBElementTypeTransformer.h"
 
@@ -19,11 +20,26 @@ static NSString *const OBJC_PROP_ATTRIBS_SEPARATOR = @",";
 
 @implementation FBElementUtils
 
++ (NSSet<NSString *> *)selectorNamesWithProtocol:(Protocol *)protocol
+{
+  unsigned int count;
+  struct objc_method_description *methods = protocol_copyMethodDescriptionList(protocol, YES, YES, &count);
+  NSMutableSet<NSString *> *result = [NSMutableSet set];
+  for (unsigned int i = 0; i < count; i++) {
+    SEL sel = methods[i].name;
+    if (nil != sel) {
+      [result addObject:NSStringFromSelector(sel)];
+    }
+  }
+  free(methods);
+  return result.copy;
+}
+
 + (NSString *)wdAttributeNameForAttributeName:(NSString *)name
 {
   NSAssert(name.length > 0, @"Attribute name cannot be empty", nil);
   NSDictionary *attributeNamesMapping = [self.class wdAttributeNamesMapping];
-  NSString *result = [attributeNamesMapping valueForKey:name];
+  NSString *result = attributeNamesMapping[name];
   if (nil == result) {
     NSString *description = [NSString stringWithFormat:@"The attribute '%@' is unknown. Valid attribute names are: %@", name, [attributeNamesMapping.allKeys sortedArrayUsingSelector:@selector(compare:)]];
     @throw [NSException exceptionWithName:FBUnknownAttributeException reason:description userInfo:@{}];
@@ -106,22 +122,12 @@ static NSString *const OBJC_PROP_ATTRIBS_SEPARATOR = @",";
     }
     attributeNamesMapping = resultCache.copy;
   });
-  return attributeNamesMapping.copy;
+  return attributeNamesMapping;
 }
 
-static BOOL FBShouldUsePayloadForUIDExtraction = YES;
-static dispatch_once_t oncePayloadToken;
-+ (NSString *)uidWithAccessibilityElement:(XCAccessibilityElement *)element
++ (NSString *)uidWithAccessibilityElement:(id<FBXCAccessibilityElement>)element
 {
-  dispatch_once(&oncePayloadToken, ^{
-    FBShouldUsePayloadForUIDExtraction = [element respondsToSelector:@selector(payload)];
-  });
-  unsigned long long elementId;
-  if (FBShouldUsePayloadForUIDExtraction) {
-    elementId = [[element.payload objectForKey:@"uid.elementID"] longLongValue];
-  } else {
-    elementId = [[element valueForKey:@"_elementID"] longLongValue];
-  }
+  unsigned long long elementId = [self.class idWithAccessibilityElement:element];
   int processId = element.processIdentifier;
   if (elementId < 1 || processId < 1) {
     return nil;
@@ -131,6 +137,18 @@ static dispatch_once_t oncePayloadToken;
   memcpy(b + sizeof(long long), &processId, sizeof(int));
   NSUUID *uuidValue = [[NSUUID alloc] initWithUUIDBytes:b];
   return uuidValue.UUIDString;
+}
+
+static BOOL FBShouldUsePayloadForUIDExtraction = YES;
+static dispatch_once_t oncePayloadToken;
++ (unsigned long long)idWithAccessibilityElement:(id<FBXCAccessibilityElement>)element
+{
+  dispatch_once(&oncePayloadToken, ^{
+    FBShouldUsePayloadForUIDExtraction = [(NSObject *)element respondsToSelector:@selector(payload)];
+  });
+  return FBShouldUsePayloadForUIDExtraction
+    ? [[element.payload objectForKey:@"uid.elementID"] longLongValue]
+    : [[(NSObject *)element valueForKey:@"_elementID"] longLongValue];
 }
 
 @end

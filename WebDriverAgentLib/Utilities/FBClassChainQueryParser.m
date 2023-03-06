@@ -11,7 +11,6 @@
 #import "FBErrorBuilder.h"
 #import "FBElementTypeTransformer.h"
 #import "FBExceptions.h"
-#import "FBPredicate.h"
 #import "NSPredicate+FBFormat.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -503,7 +502,9 @@ static NSNumberFormatter *numberFormatter = nil;
   return [[FBErrorBuilder.builder withDescription:fullDescription] build];
 }
 
-+ (nullable FBClassChain*)compiledQueryWithTokenizedQuery:(NSArray<FBBaseClassChainToken *> *)tokenizedQuery originalQuery:(NSString *)originalQuery error:(NSError **)error
++ (nullable FBClassChain*)compiledQueryWithTokenizedQuery:(NSArray<FBBaseClassChainToken *> *)tokenizedQuery
+                                            originalQuery:(NSString *)originalQuery
+                                                    error:(NSError **)error
 {
   NSMutableArray *result = [NSMutableArray array];
   XCUIElementType chainElementType = XCUIElementTypeAny;
@@ -515,8 +516,10 @@ static NSNumberFormatter *numberFormatter = nil;
   for (FBBaseClassChainToken *token in tokenizedQuery) {
     if ([token isKindOfClass:FBClassNameToken.class]) {
       if (isTypeSet) {
-        NSString *description = [NSString stringWithFormat:@"Unexpected token '%@'. The type name can be set only once.", token.asString];
-        *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        if (error) {
+          NSString *description = [NSString stringWithFormat:@"Unexpected token '%@'. The type name can be set only once.", token.asString];
+          *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        }
         return nil;
       }
       @try {
@@ -524,16 +527,20 @@ static NSNumberFormatter *numberFormatter = nil;
         isTypeSet = YES;
       } @catch (NSException *e) {
         if ([e.name isEqualToString:FBInvalidArgumentException]) {
-          NSString *description = [NSString stringWithFormat:@"'%@' class name is unknown to WDA", token.asString];
-          *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+          if (error) {
+            NSString *description = [NSString stringWithFormat:@"'%@' class name is unknown to WDA", token.asString];
+            *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+          }
           return nil;
         }
         @throw e;
       }
     } else if ([token isKindOfClass:FBStarToken.class]) {
       if (isTypeSet) {
-        NSString *description = [NSString stringWithFormat:@"Unexpected token '%@'. The type name can be set only once.", token.asString];
-        *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        if (error) {
+          NSString *description = [NSString stringWithFormat:@"Unexpected token '%@'. The type name can be set only once.", token.asString];
+          *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        }
         return nil;
       }
       chainElementType = XCUIElementTypeAny;
@@ -541,7 +548,9 @@ static NSNumberFormatter *numberFormatter = nil;
     } else if ([token isKindOfClass:FBDescendantMarkerToken.class]) {
       if (isDescendantSet) {
         NSString *description = [NSString stringWithFormat:@"Unexpected token '%@'. Descendant markers cannot be duplicated.", token.asString];
-        *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        if (error) {
+          *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        }
         return nil;
       }
       isTypeSet = NO;
@@ -551,15 +560,19 @@ static NSNumberFormatter *numberFormatter = nil;
     } else if ([token isKindOfClass:FBAbstractPredicateToken.class]) {
       if (isPositionSet) {
         NSString *description = [NSString stringWithFormat:@"Predicate value '%@' must be set before position value.", token.asString];
-        *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        if (error) {
+          *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        }
         return nil;
       }
       if (!((FBAbstractPredicateToken *)token).isParsingCompleted) {
         NSString *description = [NSString stringWithFormat:@"Cannot find the end of '%@' predicate value.", token.asString];
-        *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        if (error) {
+          *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        }
         return nil;
       }
-      NSPredicate *value = [NSPredicate fb_formatSearchPredicate:[FBPredicate predicateWithFormat:token.asString]];
+      NSPredicate *value = [NSPredicate fb_snapshotBlockPredicateWithPredicate:[NSPredicate predicateWithFormat:token.asString]];
       if ([token isKindOfClass:FBSelfPredicateToken.class]) {
         [predicates addObject:[[FBSelfPredicateItem alloc] initWithValue:value]];
       } else if ([token isKindOfClass:FBDescendantPredicateToken.class]) {
@@ -568,13 +581,17 @@ static NSNumberFormatter *numberFormatter = nil;
     } else if ([token isKindOfClass:FBNumberToken.class]) {
       if (isPositionSet) {
         NSString *description = [NSString stringWithFormat:@"Position value '%@' is expected to be set only once.", token.asString];
-        *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        if (error) {
+          *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        }
         return nil;
       }
       NSNumber *position = [numberFormatter numberFromString:token.asString];
       if (nil == position || 0 == position.intValue) {
         NSString *description = [NSString stringWithFormat:@"Position value '%@' is expected to be a valid integer number not equal to zero.", token.asString];
-        *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        if (error) {
+          *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+        }
         return nil;
       }
       chainElementPosition = position;
@@ -603,8 +620,10 @@ static NSNumberFormatter *numberFormatter = nil;
     if (isTypeSet) {
       [result addObject:[[FBClassChainItem alloc] initWithType:chainElementType position:chainElementPosition predicates:predicates.copy isDescendant:YES]];
     } else {
-      NSString *description = @"Descendants lookup modifier '**/' should be followed with the actual element type";
-      *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+      if (error) {
+        NSString *description = @"Descendants lookup modifier '**/' should be followed with the actual element type";
+        *error = [self.class compilationErrorWithQuery:originalQuery description:description];
+      }
       return nil;
     }
   } else {

@@ -7,23 +7,36 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-#import <WebDriverAgentLib/XCElementSnapshot.h>
-#import <WebDriverAgentLib/XCUIElement.h>
+#import "FBXCElementSnapshotWrapper.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface XCUIElement (FBUID)
 
-/*! Represents unique internal element identifier, which is the same for an element and its snapshot */
+/*! Represents unique internal element identifier, which is the same for an element and its snapshot as UUIDv4 */
 @property (nonatomic, nullable, readonly, copy) NSString *fb_uid;
+
+/*! Represents unique internal element identifier, which is the same for an element and its snapshot */
+@property (nonatomic, readonly) unsigned long long fb_accessibiltyId;
 
 @end
 
 
-@interface XCElementSnapshot (FBUID)
+@interface FBXCElementSnapshotWrapper (FBUID)
+
+/*! Represents unique internal element identifier, which is the same for an element and its snapshot as UUIDv4 */
+@property (nonatomic, nullable, readonly, copy) NSString *fb_uid;
 
 /*! Represents unique internal element identifier, which is the same for an element and its snapshot */
-@property (nonatomic, nullable, readonly, copy) NSString *fb_uid;
+@property (nonatomic, readonly) unsigned long long fb_accessibiltyId;
+
+/**
+ Fetches wdUID attribute value for the given snapshot instance
+
+ @param snapshot snapshot instance
+ @return UID attribute value
+ */
++ (nullable NSString *)wdUIDWithSnapshot:(id<FBXCElementSnapshot>)snapshot;
 
 @end
 

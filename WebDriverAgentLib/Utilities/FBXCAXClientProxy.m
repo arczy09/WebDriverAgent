@@ -9,40 +9,13 @@
 
 #import "FBXCAXClientProxy.h"
 
-#import <objc/runtime.h>
-
-#import "FBConfiguration.h"
+#import "FBXCAccessibilityElement.h"
 #import "FBLogger.h"
 #import "FBMacros.h"
-#import "FBReflectionUtils.h"
-#import "XCAXClient_iOS.h"
+#import "XCAXClient_iOS+FBSnapshotReqParams.h"
 #import "XCUIDevice.h"
 
 static id FBAXClient = nil;
-
-@implementation XCAXClient_iOS (WebDriverAgent)
-
-/**
- Parameters for traversing elements tree from parents to children while requesting XCElementSnapshot.
-
- @return dictionary with parameters for element's snapshot request
- */
-- (NSDictionary *)fb_getParametersForElementSnapshot
-{
-  return FBConfiguration.snapshotRequestParameters;
-}
-
-+ (void)load
-{
-  static dispatch_once_t onceToken;
-  dispatch_once(&onceToken, ^{
-    SEL originalParametersSelector = @selector(defaultParameters);
-    SEL swizzledParametersSelector = @selector(fb_getParametersForElementSnapshot);
-    FBReplaceMethod([self class], originalParametersSelector, swizzledParametersSelector);
-  });
-}
-
-@end
 
 @implementation FBXCAXClientProxy
 
@@ -62,19 +35,13 @@ static id FBAXClient = nil;
   return [FBAXClient _setAXTimeout:timeout error:error];
 }
 
-- (XCElementSnapshot *)snapshotForElement:(XCAccessibilityElement *)element
-                               attributes:(NSArray<NSString *> *)attributes
-                                 maxDepth:(nullable NSNumber *)maxDepth
-                                    error:(NSError **)error
+- (id<FBXCElementSnapshot>)snapshotForElement:(id<FBXCAccessibilityElement>)element
+                                   attributes:(NSArray<NSString *> *)attributes
+                                     maxDepth:(nullable NSNumber *)maxDepth
+                                        error:(NSError **)error
 {
-  NSMutableDictionary *parameters = [[NSMutableDictionary alloc] init];
-  // Mimicking XCTest framework behavior (this attribute is added by default unless it is an excludingNonModalElements query)
-  // See https://github.com/appium/WebDriverAgent/pull/523
-  if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"13.0")) {
-    parameters[@"snapshotKeyHonorModalViews"] = @(NO);
-  }
+  NSMutableDictionary *parameters = [NSMutableDictionary dictionaryWithDictionary:self.defaultParameters];
   if (nil != maxDepth) {
-    [parameters addEntriesFromDictionary:self.defaultParameters];
     parameters[FBSnapshotMaxDepthKey] = maxDepth;
   }
 
@@ -82,16 +49,16 @@ static id FBAXClient = nil;
                                          attributes:attributes
                                          parameters:[parameters copy]
                                               error:error];
-  XCElementSnapshot *snapshot = [result valueForKey:@"_rootElementSnapshot"];
+  id<FBXCElementSnapshot> snapshot = [result valueForKey:@"_rootElementSnapshot"];
   return nil == snapshot ? result : snapshot;
 }
 
-- (NSArray<XCAccessibilityElement *> *)activeApplications
+- (NSArray<id<FBXCAccessibilityElement>> *)activeApplications
 {
   return [FBAXClient activeApplications];
 }
 
-- (XCAccessibilityElement *)systemApplication
+- (id<FBXCAccessibilityElement>)systemApplication
 {
   return [FBAXClient systemApplication];
 }
@@ -107,7 +74,7 @@ static id FBAXClient = nil;
   [FBAXClient notifyWhenNoAnimationsAreActiveForApplication:application reply:reply];
 }
 
-- (NSDictionary *)attributesForElement:(XCAccessibilityElement *)element
+- (NSDictionary *)attributesForElement:(id<FBXCAccessibilityElement>)element
                             attributes:(NSArray *)attributes
 {
   NSError *error = nil;

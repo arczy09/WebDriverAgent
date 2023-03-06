@@ -44,7 +44,7 @@
   if (![pastItemsQuery.firstMatch waitForExistenceWithTimeout:2.0]) {
     XCTFail(@"No matched element named 'Paste'");
   }
-  XCUIElement *pasteItem = pastItemsQuery.fb_firstMatch;
+  XCUIElement *pasteItem = pastItemsQuery.firstMatch;
   XCTAssertNotNil(pasteItem);
   [pasteItem tap];
   FBAssertWaitTillBecomesTrue([textField.value isEqualToString:text]);
@@ -61,7 +61,9 @@
                                 matchingIdentifier:@"Select All"].firstMatch;
   XCTAssertTrue([selectAllItem waitForExistenceWithTimeout:5]);
   [selectAllItem tap];
-  [textField pressForDuration:2.0];
+  if (SYSTEM_VERSION_LESS_THAN(@"16.0")) {
+    [textField pressForDuration:2.0];
+  }
   XCUIElement *copyItem = [[self.testedApplication descendantsMatchingType:XCUIElementTypeAny]
                            matchingIdentifier:@"Copy"].firstMatch;
   XCTAssertTrue([copyItem waitForExistenceWithTimeout:5]);

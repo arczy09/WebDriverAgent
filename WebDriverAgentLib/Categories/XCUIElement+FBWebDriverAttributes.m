@@ -9,11 +9,10 @@
 
 #import "XCUIElement+FBWebDriverAttributes.h"
 
-#import <objc/runtime.h>
-
 #import "FBElementTypeTransformer.h"
 #import "FBLogger.h"
 #import "FBMacros.h"
+#import "FBXCElementSnapshotWrapper.h"
 #import "XCUIElement+FBAccessibility.h"
 #import "XCUIElement+FBIsVisible.h"
 #import "XCUIElement+FBUID.h"
@@ -26,9 +25,9 @@
 
 @implementation XCUIElement (WebDriverAttributesForwarding)
 
-- (XCElementSnapshot *)fb_snapshotForAttributeName:(NSString *)name
+- (id<FBXCElementSnapshot>)fb_snapshotForAttributeName:(NSString *)name
 {
-  // These attrbiutes are special, because we can only retrieve them from
+  // These attributes are special, because we can only retrieve them from
   // the snapshot if we explicitly ask XCTest to include them into the query while taking it.
   // That is why fb_snapshotWithAllAttributes method must be used instead of the default snapshot
   // call
@@ -51,23 +50,27 @@
 - (id)fb_valueForWDAttributeName:(NSString *)name
 {
   NSString *wdAttributeName = [FBElementUtils wdAttributeNameForAttributeName:name];
-  XCElementSnapshot *snapshot = [self fb_snapshotForAttributeName:wdAttributeName];
-  return [snapshot fb_valueForWDAttributeName:name];
+  id<FBXCElementSnapshot> snapshot = [self fb_snapshotForAttributeName:wdAttributeName];
+  return [[FBXCElementSnapshotWrapper ensureWrapped:snapshot] fb_valueForWDAttributeName:name];
 }
 
 - (id)forwardingTargetForSelector:(SEL)aSelector
 {
-  struct objc_method_description descr = protocol_getMethodDescription(@protocol(FBElement), aSelector, YES, YES);
-  SEL webDriverAttributesSelector = descr.name;
-  return nil == webDriverAttributesSelector
-    ? nil
-    : [self fb_snapshotForAttributeName:NSStringFromSelector(webDriverAttributesSelector)];
+  static dispatch_once_t onceToken;
+  static NSSet<NSString *> *fbElementAttributeNames;
+  dispatch_once(&onceToken, ^{
+    fbElementAttributeNames = [FBElementUtils selectorNamesWithProtocol:@protocol(FBElement)];
+  });
+  NSString* attributeName = NSStringFromSelector(aSelector);
+  return [fbElementAttributeNames containsObject:attributeName]
+    ? [FBXCElementSnapshotWrapper ensureWrapped:[self fb_snapshotForAttributeName:attributeName]]
+    : nil;
 }
 
 @end
 
 
-@implementation XCElementSnapshot (WebDriverAttributes)
+@implementation FBXCElementSnapshotWrapper (WebDriverAttributes)
 
 - (id)fb_valueForWDAttributeName:(NSString *)name
 {
@@ -97,16 +100,21 @@
     value = [NSString stringWithFormat:@"%@", value];
   }
   return value;
- }
+}
 
-- (NSString *)wdName
++ (NSString *)wdNameWithSnapshot:(id<FBXCElementSnapshot>)snapshot
 {
-  NSString *identifier = self.identifier;
+  NSString *identifier = snapshot.identifier;
   if (nil != identifier && identifier.length != 0) {
     return identifier;
   }
-  NSString *label = self.label;
+  NSString *label = snapshot.label;
   return FBTransferEmptyStringToNil(label);
+}
+
+- (NSString *)wdName
+{
+  return [self.class wdNameWithSnapshot:self.snapshot];
 }
 
 - (NSString *)wdLabel
@@ -161,8 +169,8 @@
   // Text fields: actual accessible element isn't text field itself, but nested element
   if (elementType == XCUIElementTypeCell) {
     if (!self.fb_isAccessibilityElement) {
-      XCElementSnapshot *containerView = [[self children] firstObject];
-      if (!containerView.fb_isAccessibilityElement) {
+      id<FBXCElementSnapshot> containerView = [[self children] firstObject];
+      if (![FBXCElementSnapshotWrapper ensureWrapped:containerView].fb_isAccessibilityElement) {
         return NO;
       }
     }
@@ -171,12 +179,13 @@
       return NO;
     }
   }
-  XCElementSnapshot *parentSnapshot = self.parent;
+  id<FBXCElementSnapshot> parentSnapshot = self.parent;
   while (parentSnapshot) {
     // In the scenario when table provides Search results controller, table could be marked as accessible element, even though it isn't
     // As it is highly unlikely that table view should ever be an accessibility element itself,
     // for now we work around that by skipping Table View in container checks
-    if (parentSnapshot.fb_isAccessibilityElement && parentSnapshot.elementType != XCUIElementTypeTable) {
+    if ([FBXCElementSnapshotWrapper ensureWrapped:parentSnapshot].fb_isAccessibilityElement
+        && parentSnapshot.elementType != XCUIElementTypeTable) {
       return NO;
     }
     parentSnapshot = parentSnapshot.parent;
@@ -186,9 +195,10 @@
 
 - (BOOL)isWDAccessibilityContainer
 {
-  NSArray<XCElementSnapshot *> *children = self.children;
-  for (XCElementSnapshot *child in children) {
-    if (child.isWDAccessibilityContainer || child.fb_isAccessibilityElement) {
+  NSArray<id<FBXCElementSnapshot>> *children = self.children;
+  for (id<FBXCElementSnapshot> child in children) {
+    FBXCElementSnapshotWrapper *wrappedChild = [FBXCElementSnapshotWrapper ensureWrapped:child];
+    if (wrappedChild.isWDAccessibilityContainer || wrappedChild.fb_isAccessibilityElement) {
       return YES;
     }
   }
@@ -209,7 +219,7 @@
 {
   if (nil != self.parent) {
     for (NSUInteger index = 0; index < self.parent.children.count; ++index) {
-      if ([self.parent.children objectAtIndex:index] == self) {
+      if ([self.parent.children objectAtIndex:index] == self.snapshot) {
         return index;
       }
     }
