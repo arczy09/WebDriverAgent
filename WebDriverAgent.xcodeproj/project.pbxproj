@@ -37,6 +37,8 @@
 		315A15012518CB8700A3A064 /* TouchableView.m in Sources */ = {isa = PBXBuildFile; fileRef = 315A15002518CB8700A3A064 /* TouchableView.m */; };
 		315A15072518CC2800A3A064 /* TouchSpotView.m in Sources */ = {isa = PBXBuildFile; fileRef = 315A15062518CC2800A3A064 /* TouchSpotView.m */; };
 		315A150A2518D6F400A3A064 /* TouchViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 315A15092518D6F400A3A064 /* TouchViewController.m */; };
+		62A87DE529B639F2005598A0 /* XCUIElement+FBUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = EEE376401D59F81400ED88DD /* XCUIElement+FBUtilities.m */; };
+		62A87DE629B639F2005598A0 /* XCUIElement+FBUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = EEE376401D59F81400ED88DD /* XCUIElement+FBUtilities.m */; };
 		6385F4A7220A40760095BBDB /* XCUIApplicationProcessDelay.m in Sources */ = {isa = PBXBuildFile; fileRef = 6385F4A5220A40760095BBDB /* XCUIApplicationProcessDelay.m */; };
 		63CCF91221ECE4C700E94ABD /* FBImageIOScaler.h in Headers */ = {isa = PBXBuildFile; fileRef = 63CCF91021ECE4C700E94ABD /* FBImageIOScaler.h */; };
 		63CCF91321ECE4C700E94ABD /* FBImageIOScaler.m in Sources */ = {isa = PBXBuildFile; fileRef = 63CCF91121ECE4C700E94ABD /* FBImageIOScaler.m */; };
@@ -88,7 +90,6 @@
 		641EE6062240C5CA00173FCB /* FBOrientationCommands.m in Sources */ = {isa = PBXBuildFile; fileRef = EE9AB75D1CAEDF0C008C271F /* FBOrientationCommands.m */; };
 		641EE6072240C5CA00173FCB /* XCUICoordinate+FBFix.m in Sources */ = {isa = PBXBuildFile; fileRef = EEC9EED520064FAA00BC0D5B /* XCUICoordinate+FBFix.m */; };
 		641EE6082240C5CA00173FCB /* FBRuntimeUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = EE9AB7921CAEDF0C008C271F /* FBRuntimeUtils.m */; };
-		641EE6092240C5CA00173FCB /* XCUIElement+FBUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = EEE376401D59F81400ED88DD /* XCUIElement+FBUtilities.m */; };
 		641EE60A2240C5CA00173FCB /* FBLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = EE9B76A41CF7A43900275851 /* FBLogger.m */; };
 		641EE60B2240C5CA00173FCB /* FBCustomCommands.m in Sources */ = {isa = PBXBuildFile; fileRef = EE9AB7531CAEDF0C008C271F /* FBCustomCommands.m */; };
 		641EE60C2240C5CA00173FCB /* XCUIDevice+FBHelpers.m in Sources */ = {isa = PBXBuildFile; fileRef = AD6C26971CF2481700F8B5FF /* XCUIDevice+FBHelpers.m */; };
@@ -794,7 +795,6 @@
 		EEE376431D59F81400ED88DD /* XCUIDevice+FBRotation.h in Headers */ = {isa = PBXBuildFile; fileRef = EEE3763D1D59F81400ED88DD /* XCUIDevice+FBRotation.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EEE376441D59F81400ED88DD /* XCUIDevice+FBRotation.m in Sources */ = {isa = PBXBuildFile; fileRef = EEE3763E1D59F81400ED88DD /* XCUIDevice+FBRotation.m */; };
 		EEE376451D59F81400ED88DD /* XCUIElement+FBUtilities.h in Headers */ = {isa = PBXBuildFile; fileRef = EEE3763F1D59F81400ED88DD /* XCUIElement+FBUtilities.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		EEE376461D59F81400ED88DD /* XCUIElement+FBUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = EEE376401D59F81400ED88DD /* XCUIElement+FBUtilities.m */; };
 		EEE376491D59FAE900ED88DD /* XCUIElement+FBWebDriverAttributes.h in Headers */ = {isa = PBXBuildFile; fileRef = EEE376471D59FAE900ED88DD /* XCUIElement+FBWebDriverAttributes.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		EEE3764A1D59FAE900ED88DD /* XCUIElement+FBWebDriverAttributes.m in Sources */ = {isa = PBXBuildFile; fileRef = EEE376481D59FAE900ED88DD /* XCUIElement+FBWebDriverAttributes.m */; };
 		EEE9B4721CD02B88009D2030 /* FBRunLoopSpinner.h in Headers */ = {isa = PBXBuildFile; fileRef = EEE9B4701CD02B88009D2030 /* FBRunLoopSpinner.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -3003,7 +3003,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5726CAEEBD2BAF2906B2A431 /* build-ipa.sh in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3057,6 +3056,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				62A87DE629B639F2005598A0 /* XCUIElement+FBUtilities.m in Sources */,
 				641EE3452240C1C800173FCB /* UITestingUITests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -3144,7 +3144,6 @@
 				641EE7092240CDEB00173FCB /* XCUIElement+FBTVFocuse.m in Sources */,
 				641EE6072240C5CA00173FCB /* XCUICoordinate+FBFix.m in Sources */,
 				641EE6082240C5CA00173FCB /* FBRuntimeUtils.m in Sources */,
-				641EE6092240C5CA00173FCB /* XCUIElement+FBUtilities.m in Sources */,
 				641EE60A2240C5CA00173FCB /* FBLogger.m in Sources */,
 				641EE60B2240C5CA00173FCB /* FBCustomCommands.m in Sources */,
 				641EE60C2240C5CA00173FCB /* XCUIDevice+FBHelpers.m in Sources */,
@@ -3264,7 +3263,6 @@
 				71E75E6F254824230099FC87 /* XCUIElementQuery+FBHelpers.m in Sources */,
 				71D04DCA25356C43008A052C /* XCUIElement+FBCaching.m in Sources */,
 				EE158AEB1CBD456F00A3E3F0 /* FBRuntimeUtils.m in Sources */,
-				EEE376461D59F81400ED88DD /* XCUIElement+FBUtilities.m in Sources */,
 				EE9B76A91CF7A43900275851 /* FBLogger.m in Sources */,
 				EE158ABB1CBD456F00A3E3F0 /* FBCustomCommands.m in Sources */,
 				AD6C26991CF2481700F8B5FF /* XCUIDevice+FBHelpers.m in Sources */,
@@ -3429,6 +3427,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				62A87DE529B639F2005598A0 /* XCUIElement+FBUtilities.m in Sources */,
 				EE9AB8011CAEE048008C271F /* UITestingUITests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

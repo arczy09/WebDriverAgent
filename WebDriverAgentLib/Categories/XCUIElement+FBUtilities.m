@@ -176,9 +176,11 @@
 - (XCUIElement *)fb_parentElement:(XCUIElement *)element
                           root:(XCUIElement *)root
 {
-  XCElementSnapshot *snapshot = [element fb_takeSnapshot];
-  XCElementSnapshot *parent = [snapshot parent];
-  NSString *parentId = [parent wdUID];
+  //XCElementSnapshot snapshot = [element fb_takeSnapshot];
+  id<FBXCElementSnapshot> snapshot = [element fb_takeSnapshot];
+  // XCElementSnapshot *parent = [snapshot parent];
+  id<FBXCElementSnapshot> parent = [snapshot parent];
+  NSString *parentId = [FBXCElementSnapshotWrapper wdUIDWithSnapshot:parent];
   NSArray<NSString *> *ids = [NSArray arrayWithObjects:parentId,nil];
   XCUIElementType type = [parent elementType];
   XCUIElementQuery *query = [root.fb_query descendantsMatchingType:type];
