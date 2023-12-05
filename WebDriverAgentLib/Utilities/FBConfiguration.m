@@ -33,6 +33,7 @@ static BOOL FBShouldUseTestManagerForVisibilityDetection = NO;
 static BOOL FBShouldUseSingletonTestManager = YES;
 
 static NSUInteger FBMjpegScalingFactor = 100;
+static BOOL FBMjpegShouldFixOrientation = NO;
 static NSUInteger FBMjpegServerScreenshotQuality = 25;
 static NSUInteger FBMjpegServerFramerate = 10;
 
@@ -94,6 +95,16 @@ static UIInterfaceOrientation FBScreenshotOrientation;
   [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"DisableScreenshots"];
 }
 
++ (void)disableScreenRecordings
+{
+  [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"DisableDiagnosticScreenRecordings"];
+}
+
++ (void)enableScreenRecordings
+{
+  [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"DisableDiagnosticScreenRecordings"];
+}
+
 + (NSRange)bindingPortRange
 {
   // 'WebDriverAgent --port 8080' can be passed via the arguments to the process
@@ -131,6 +142,15 @@ static UIInterfaceOrientation FBScreenshotOrientation;
 
 + (void)setMjpegScalingFactor:(NSUInteger)scalingFactor {
   FBMjpegScalingFactor = scalingFactor;
+}
+
++ (BOOL)mjpegShouldFixOrientation
+{
+  return FBMjpegShouldFixOrientation;
+}
+
++ (void)setMjpegShouldFixOrientation:(BOOL)enabled {
+  FBMjpegShouldFixOrientation = enabled;
 }
 
 + (BOOL)verboseLoggingEnabled
@@ -275,9 +295,7 @@ static UIInterfaceOrientation FBScreenshotOrientation;
 
   // To dismiss keyboard tutorial on iOS 11+ (iPad)
   if ([controller respondsToSelector:@selector(setValue:forPreferenceKey:)]) {
-    if (isSDKVersionGreaterThanOrEqualTo(@"11.0")) {
-      [controller setValue:@YES forPreferenceKey:@"DidShowGestureKeyboardIntroduction"];
-    }
+    [controller setValue:@YES forPreferenceKey:@"DidShowGestureKeyboardIntroduction"];
     if (isSDKVersionGreaterThanOrEqualTo(@"13.0")) {
       [controller setValue:@YES forPreferenceKey:@"DidShowContinuousPathIntroduction"];
     }
@@ -445,7 +463,7 @@ static UIInterfaceOrientation FBScreenshotOrientation;
   FBShouldUseCompactResponses = YES;
   FBElementResponseAttributes = @"type,label";
   FBMaxTypingFrequency = 60;
-  FBScreenshotQuality = 1;
+  FBScreenshotQuality = 3;
   FBCustomSnapshotTimeout = 15.;
   FBShouldUseFirstMatch = NO;
   FBShouldBoundElementsByIndex = NO;
