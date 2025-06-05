@@ -14,10 +14,10 @@ jobs:
       - name: Import iOS signing certificate
         uses: apple-actions/import-codesign-certs@v3
         with:
-          # Base-64–encoded .p12 (no header/footer, no line breaks)
+          # Must be exactly the Base-64 string of your .p12, no headers, no line breaks
           p12-file-base64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
           # The passphrase you used when exporting that .p12
-          p12-password:   ${{ secrets.APPLE_CERT_PASSWORD }}
+          p12-password: ${{ secrets.APPLE_CERT_PASSWORD }}
 
       - name: Install provisioning profile
         run: |
@@ -29,15 +29,12 @@ jobs:
 
       - name: Clone & build WebDriverAgentRunner
         run: |
-          # 1) Grab the Appium‐managed WebDriverAgent repo
           git clone https://github.com/appium/WebDriverAgent.git
           cd WebDriverAgent
-
-          # 2) Pull in all submodules
           git submodule update --init --recursive
 
-          # 3) Archive (build) the Runner using Manual signing
-          xcodebuild -project WebDriverAgent.xcodeproj \
+          xcodebuild \
+            -project WebDriverAgent.xcodeproj \
             -scheme WebDriverAgentRunner \
             -configuration Release \
             -archivePath build/WDA.xcarchive \
@@ -53,7 +50,7 @@ jobs:
             -exportPath build/out \
             -exportOptionsPlist Scripts/exportOptions.plist
 
-      - name: Upload WebDriverAgentRunner.ipa
+      - name: Upload signed IPA
         uses: actions/upload-artifact@v4
         with:
           name: WebDriverAgentRunner.ipa
