@@ -11,24 +11,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Decode and import iOS Development certificate
-        uses: apple/import-codesign-certs@v1
+      - name: Import iOS signing certificate
+        uses: apple-actions/import-codesign-certs@v3
         with:
-          p12-base64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
-          p12-password: ${{ secrets.APPLE_CERT_PASSWORD }}
+          # Base-64–encoded .p12 (no header/footer, no line breaks)
+          p12-file-base64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
+          # The passphrase you used when exporting that .p12
+          p12-password:   ${{ secrets.APPLE_CERT_PASSWORD }}
 
-      - name: Decode and install provisioning profile
-        uses: apple/import-provisioning-profile@v1
-        with:
-          profile-base64: ${{ secrets.PROVISION_PROFILE_BASE64 }}
-
-      - name: Build & Archive WebDriverAgentRunner
+      - name: Install provisioning profile
         run: |
-          # 1) Clone the Appium-managed WebDriverAgent repository
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "${{ secrets.PROVISION_PROFILE_BASE64 }}" \
+            | base64 --decode \
+            > ~/Library/MobileDevice/Provisioning\ Profiles/WDA-Custom-Profile.mobileprovision
+          ls -lh ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Clone & build WebDriverAgentRunner
+        run: |
+          # 1) Grab the Appium‐managed WebDriverAgent repo
           git clone https://github.com/appium/WebDriverAgent.git
           cd WebDriverAgent
 
-          # 2) Initialize submodules
+          # 2) Pull in all submodules
           git submodule update --init --recursive
 
           # 3) Archive (build) the Runner using Manual signing
@@ -48,7 +53,7 @@ jobs:
             -exportPath build/out \
             -exportOptionsPlist Scripts/exportOptions.plist
 
-      - name: Upload signed IPA as artifact
+      - name: Upload WebDriverAgentRunner.ipa
         uses: actions/upload-artifact@v4
         with:
           name: WebDriverAgentRunner.ipa
