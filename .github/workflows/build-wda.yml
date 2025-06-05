@@ -12,33 +12,26 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Decode and import iOS Development certificate
-        uses: apple/actions-import-codesign-certs@v1
+        uses: apple/import-codesign-certs@v1
         with:
           p12-base64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
           p12-password: ${{ secrets.APPLE_CERT_PASSWORD }}
-        # This Action will:
-        # 1) Decode the Base64 P12
-        # 2) Create a temporary keychain, unlock it, import the P12
-        # 3) Add the keychain to the search path so xcodebuild can find it
 
       - name: Decode and install provisioning profile
-        uses: apple/actions-import-provisioning-profile@v1
+        uses: apple/import-provisioning-profile@v1
         with:
-          provisioning-profile-base64: ${{ secrets.PROVISION_PROFILE_BASE64 }}
-        # This Action will:
-        # 1) Decode the Base64 provisioning profile
-        # 2) Copy it into ~/Library/MobileDevice/Provisioning Profiles/
+          profile-base64: ${{ secrets.PROVISION_PROFILE_BASE64 }}
 
       - name: Build & Archive WebDriverAgentRunner
         run: |
-          # 1) Clone the official Appium-managed WebDriverAgent repo
+          # 1) Clone the Appium-managed WebDriverAgent repository
           git clone https://github.com/appium/WebDriverAgent.git
           cd WebDriverAgent
 
-          # 2) Initialize and update all submodules
+          # 2) Initialize submodules
           git submodule update --init --recursive
 
-          # 3) Archive (build) the WDA Runner using Manual signing
+          # 3) Archive (build) the Runner using Manual signing
           xcodebuild -project WebDriverAgent.xcodeproj \
             -scheme WebDriverAgentRunner \
             -configuration Release \
