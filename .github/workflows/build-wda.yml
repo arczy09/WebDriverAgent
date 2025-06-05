@@ -21,10 +21,27 @@ jobs:
 
       - name: Import iOS Dev certificate
         run: |
-          security create-keychain -p "" wda.keychain
+          # 1) Create a new keychain with a non-empty password ("wda_pass")
+          security create-keychain -p wda_pass wda.keychain
+
+          # 2) Make that the default keychain so codesign uses it
           security default-keychain -s wda.keychain
-          security import ios_dev.p12 -k wda.keychain -P "$CERT_PW" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -s -k "" wda.keychain
+
+          # 3) Unlock the keychain with its password
+          security unlock-keychain -p wda_pass wda.keychain
+
+          # 4) Import the .p12 (uses $CERT_PW, your Apple-ID certificate passphrase)
+          security import ios_dev.p12 \
+            -k wda.keychain \
+            -P "$CERT_PW" \
+            -T /usr/bin/codesign
+
+          # 5) Allow codesign to use that private key without prompting
+          security set-key-partition-list \
+            -S apple-tool:,apple: \
+            -s \
+            -k wda_pass \
+            wda.keychain
 
       - name: Copy provisioning profile into place
         run: |
@@ -33,9 +50,14 @@ jobs:
 
       - name: Build & Archive WDA
         run: |
+          # 1) Clone the official Appium-managed WebDriverAgent repository
           git clone https://github.com/appium/WebDriverAgent.git
           cd WebDriverAgent
+
+          # 2) Pull submodules
           git submodule update --init --recursive
+
+          # 3) Archive (build) the WDA Runner using our provisioning profile
           xcodebuild -project WebDriverAgent.xcodeproj \
             -scheme WebDriverAgentRunner \
             -configuration Release \
