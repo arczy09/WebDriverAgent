@@ -6,7 +6,6 @@ on:
 jobs:
   build-wda:
     runs-on: macos-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,28 +16,15 @@ jobs:
           CERT_PW:   ${{ secrets.APPLE_CERT_PASSWORD }}
           PROFILE_BASE64: ${{ secrets.PROVISION_PROFILE_BASE64 }}
         run: |
-          # Decode Base64 blobs into actual files
           echo "$CERT_BASE64"  | base64 --decode > ios_dev.p12
           echo "$PROFILE_BASE64" | base64 --decode > WDA-Custom-Profile.mobileprovision
 
-      - name: Import iOS Dev certificate into login keychain
+      - name: Import iOS Dev certificate
         run: |
-          # Path to the built-in login keychain on GitHub macOS runners
-          LOGIN_KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
-
-          # 1) Import the .p12 into the login keychain using your Apple cert passphrase
-          security import ios_dev.p12 \
-            -k "$LOGIN_KEYCHAIN" \
-            -P "$CERT_PW" \
-            -T /usr/bin/codesign \
-            -A
-
-          # 2) Grant codesign (and Xcode) permission to use this private key
-          security set-key-partition-list \
-            -S apple-tool:,apple: \
-            -s \
-            -k "$CERT_PW" \
-            "$LOGIN_KEYCHAIN"
+          security create-keychain -p "" wda.keychain
+          security default-keychain -s wda.keychain
+          security import ios_dev.p12 -k wda.keychain -P "$CERT_PW" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" wda.keychain
 
       - name: Copy provisioning profile into place
         run: |
@@ -47,14 +33,9 @@ jobs:
 
       - name: Build & Archive WDA
         run: |
-          # Clone the WebDriverAgent repo
           git clone https://github.com/appium/WebDriverAgent.git
           cd WebDriverAgent
-
-          # Pull submodules
           git submodule update --init --recursive
-
-          # Archive (build) the WebDriverAgentRunner with your provisioning profile
           xcodebuild -project WebDriverAgent.xcodeproj \
             -scheme WebDriverAgentRunner \
             -configuration Release \
