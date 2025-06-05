@@ -6,6 +6,7 @@ on:
 jobs:
   build-wda:
     runs-on: macos-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,39 +17,28 @@ jobs:
           CERT_PW:   ${{ secrets.APPLE_CERT_PASSWORD }}
           PROFILE_BASE64: ${{ secrets.PROVISION_PROFILE_BASE64 }}
         run: |
-          # Decode the Base64-encoded .p12 and provisioning profile into files
+          # Decode the Base64-encoded files into actual .p12 and .mobileprovision
           echo "$CERT_BASE64"  | base64 --decode > ios_dev.p12
           echo "$PROFILE_BASE64" | base64 --decode > WDA-Custom-Profile.mobileprovision
 
-      - name: Import iOS Dev certificate into a new keychain
+      - name: Import iOS Dev certificate into the login keychain
         run: |
-          # 1) Define variables
-          KEYCHAIN_NAME="wda.keychain-db"
-          KEYCHAIN_PATH="$HOME/Library/Keychains/$KEYCHAIN_NAME"
-          KEYCHAIN_PASS="wda_pass"
+          # 1) Ensure login keychain is unlocked (password is $HOME on GitHub macOS runners)
+          security unlock-keychain -p "$HOME" login.keychain
 
-          # 2) Create a new keychain file in ~/Library/Keychains
-          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_NAME"
-
-          # 3) Ensure the new keychain is at the front of the search list
-          security list-keychains -s "$KEYCHAIN_PATH" $(security list-keychains | sed -E 's/^[[:space:]]*//;s/"//g')
-
-          # 4) Unlock the new keychain so we can import into it
-          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
-
-          # 5) Import the .p12 into the new keychain
+          # 2) Import the .p12 into the login keychain
           security import ios_dev.p12 \
-            -k "$KEYCHAIN_PATH" \
+            -k login.keychain \
             -P "$CERT_PW" \
             -T /usr/bin/codesign \
             -A
 
-          # 6) Allow codesign and Xcode to access the imported private key without prompting
+          # 3) Allow codesign to access the private key without prompting (use same passphrase)
           security set-key-partition-list \
             -S apple-tool:,apple: \
             -s \
-            -k "$KEYCHAIN_PASS" \
-            "$KEYCHAIN_PATH"
+            -k "$CERT_PW" \
+            login.keychain
 
       - name: Copy provisioning profile into place
         run: |
@@ -57,14 +47,14 @@ jobs:
 
       - name: Build & Archive WDA
         run: |
-          # 1) Clone the official Appium-managed WebDriverAgent repository
+          # 1) Clone the Appium-managed WebDriverAgent repository
           git clone https://github.com/appium/WebDriverAgent.git
           cd WebDriverAgent
 
-          # 2) Pull submodules (WebDriverAgent uses subprojects)
+          # 2) Pull submodules
           git submodule update --init --recursive
 
-          # 3) Archive (build) the WDA Runner using our provisioning profile
+          # 3) Archive (build) the WDA Runner with your provisioning profile
           xcodebuild -project WebDriverAgent.xcodeproj \
             -scheme WebDriverAgentRunner \
             -configuration Release \
